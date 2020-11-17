@@ -64,7 +64,7 @@
     <properties>
         <revision>2.24</revision>
         <changelist>-SNAPSHOT</changelist>
-        <jenkins.version>2.263</jenkins.version>
+        <jenkins.version>2.267-SNAPSHOT</jenkins.version>
         <java.level>8</java.level>
         <useBeta>true</useBeta>
     </properties>
@@ -83,6 +83,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins.workflow</groupId>
             <artifactId>workflow-step-api</artifactId>
+            <version>2.23</version>
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
@@ -97,6 +98,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins.workflow</groupId>
             <artifactId>workflow-api</artifactId>
+            <version>2.41-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
@@ -201,6 +203,19 @@
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>scm-api</artifactId>
             <classifier>tests</classifier>
+            <scope>test</scope>
+            <version>2.6.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>scm-api</artifactId>
+            <scope>test</scope>
+            <version>2.6.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>cloudbees-folder</artifactId>
+            <version>6.7</version>
             <scope>test</scope>
         </dependency>
         <dependency>

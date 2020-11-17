@@ -119,4 +119,67 @@ public class StashTest {
         assertThat(coreStepNodes, Matchers.hasSize(1));
         assertEquals("whatever", ArgumentsAction.getStepArgumentsAsString(coreStepNodes.get(0)));
     }
+
+    @Issue("JENKINS-40912")
+    @Test public void testStashVerbose() throws Exception {
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n" +
+                        "  writeFile file: 'subdir/fname', text: 'whatever'\n" +
+                        "  writeFile file: 'subdir/other', text: 'more'\n" +
+                        "  dir('subdir') {stash name: 'whatever', verbose: true}\n" +
+                        "}\n" +
+                        "node {\n" +
+                        "  dir('elsewhere') {\n" +
+                        "    unstash name: 'whatever', verbose: true\n" +
+                        "    echo \"got fname: ${readFile 'fname'} other: ${readFile 'other'}\"\n" +
+                        "  }\n" +
+                        "  writeFile file: 'at-top', text: 'ignored'\n" +
+                        "  stash name: 'from-top', includes: 'elsewhere/', excludes: '**/other', verbose: true\n" +
+                        "  semaphore 'ending'\n" +
+                        "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("ending/1", b);
+        assertEquals("{from-top={elsewhere/fname=whatever}, whatever={fname=whatever, other=more}}", StashManager.stashesOf(b).toString());
+        SemaphoreStep.success("ending/1", null);
+        r.assertBuildStatusSuccess(r.waitForCompletion(b));
+        r.assertLogContains("got fname: whatever other: more", b);
+        r.assertLogContains("[INFO] stashing :fname", b);
+        r.assertLogContains("[INFO] stashing :other", b);
+        r.assertLogContains("[INFO] unstashing :fname", b);
+        r.assertLogContains("[INFO] unstashing :other", b);
+        r.assertLogContains("[INFO] stashing :elsewhere/fname", b);
+        assertEquals("{}", StashManager.stashesOf(b).toString()); // TODO flake expected:<{[]}> but was:<{[from-top={elsewhere/fname=whatever}, whatever={fname=whatever, other=more}]}>
+    }
+    @Issue("JENKINS-40912")
+    @Test public void testStashVerboseFalse() throws Exception {
+        WorkflowJob p = r.jenkins.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition(
+                "node {\n" +
+                        "  writeFile file: 'subdir/fname', text: 'whatever'\n" +
+                        "  writeFile file: 'subdir/other', text: 'more'\n" +
+                        "  dir('subdir') {stash name: 'whatever'}\n" +
+                        "}\n" +
+                        "node {\n" +
+                        "  dir('elsewhere') {\n" +
+                        "    unstash name: 'whatever'\n" +
+                        "    echo \"got fname: ${readFile 'fname'} other: ${readFile 'other'}\"\n" +
+                        "  }\n" +
+                        "  writeFile file: 'at-top', text: 'ignored'\n" +
+                        "  stash name: 'from-top', includes: 'elsewhere/', excludes: '**/other'\n" +
+                        "  semaphore 'ending'\n" +
+                        "}", true));
+        WorkflowRun b = p.scheduleBuild2(0).waitForStart();
+        SemaphoreStep.waitForStart("ending/1", b);
+        assertEquals("{from-top={elsewhere/fname=whatever}, whatever={fname=whatever, other=more}}", StashManager.stashesOf(b).toString());
+        SemaphoreStep.success("ending/1", null);
+        r.assertBuildStatusSuccess(r.waitForCompletion(b));
+        r.assertLogContains("got fname: whatever other: more", b);
+        r.assertLogNotContains("[INFO] stashing :fname", b);
+        r.assertLogNotContains("[INFO] stashing :other", b);
+        r.assertLogNotContains("[INFO] unstashing :fname", b);
+        r.assertLogNotContains("[INFO] unstashing :other", b);
+        r.assertLogNotContains("[INFO] stashing :elsewhere/fname", b);
+        assertEquals("{}", StashManager.stashesOf(b).toString()); // TODO flake expected:<{[]}> but was:<{[from-top={elsewhere/fname=whatever}, whatever={fname=whatever, other=more}]}>
+    }
 }

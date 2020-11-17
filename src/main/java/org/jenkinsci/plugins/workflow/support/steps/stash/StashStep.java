@@ -32,6 +32,11 @@ import hudson.Launcher;
 import hudson.Util;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import jenkins.model.Jenkins;
@@ -54,6 +59,7 @@ public class StashStep extends Step {
     private @CheckForNull String excludes;
     private boolean useDefaultExcludes = true;
     private boolean allowEmpty = false;
+    private boolean verbose;
 
     @DataBoundConstructor public StashStep(@Nonnull String name) {
         Jenkins.checkGoodName(name);
@@ -96,7 +102,17 @@ public class StashStep extends Step {
         this.allowEmpty = allowEmpty;
     }
 
-    @Override public StepExecution start(StepContext context) throws Exception {
+    public boolean isVerbose() {
+        return verbose;
+    }
+
+    @DataBoundSetter
+    public void setVerbose(boolean verbose) {
+        this.verbose = verbose;
+    }
+
+    @Override
+    public StepExecution start(StepContext context) throws Exception {
         return new Execution(this, context);
     }
 
@@ -111,8 +127,13 @@ public class StashStep extends Step {
             this.step = step;
         }
 
-        @Override protected Void run() throws Exception {
-            StashManager.stash(getContext().get(Run.class), step.name, getContext().get(FilePath.class), getContext().get(Launcher.class), getContext().get(EnvVars.class), getContext().get(TaskListener.class), step.includes, step.excludes,
+        @Override
+        protected Void run() throws Exception {
+            Run build = getContext().get(Run.class);
+            if(step.verbose){
+                build.addAction(new StashManager.StashVerboseAction());
+            }
+            StashManager.stash(build, step.name, getContext().get(FilePath.class), getContext().get(Launcher.class), getContext().get(EnvVars.class), getContext().get(TaskListener.class), step.includes, step.excludes,
                     step.useDefaultExcludes, step.allowEmpty);
             return null;
         }

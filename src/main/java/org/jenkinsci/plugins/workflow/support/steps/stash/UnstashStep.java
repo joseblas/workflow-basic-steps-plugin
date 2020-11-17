@@ -25,13 +25,13 @@
 package org.jenkinsci.plugins.workflow.support.steps.stash;
 
 import com.google.common.collect.ImmutableSet;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+
 import java.util.Set;
 import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
@@ -42,10 +42,13 @@ import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 
 public class UnstashStep extends Step {
 
     private final @Nonnull String name;
+
+    private boolean verbose;
 
     @DataBoundConstructor public UnstashStep(@Nonnull String name) {
         Jenkins.checkGoodName(name);
@@ -56,24 +59,32 @@ public class UnstashStep extends Step {
         return name;
     }
 
+    @DataBoundSetter
+    public void setVerbose(boolean verbose) {
+        this.verbose = verbose;
+    }
+
     @Override public StepExecution start(StepContext context) throws Exception {
-        return new Execution(name, context);
+        return new Execution(this, context);
     }
 
     public static class Execution extends SynchronousNonBlockingStepExecution<Void> {
 
         private static final long serialVersionUID = 1L;
 
-        @SuppressFBWarnings(value="SE_TRANSIENT_FIELD_NOT_RESTORED", justification="Only used when starting.")
-        private transient final String name;
+        private transient final UnstashStep step;
 
-        Execution(String name, StepContext context) {
+        Execution(UnstashStep step, StepContext context) {
             super(context);
-            this.name = name;
+            this.step = step;
         }
 
         @Override protected Void run() throws Exception {
-            StashManager.unstash(getContext().get(Run.class), name, getContext().get(FilePath.class), getContext().get(Launcher.class), getContext().get(EnvVars.class), getContext().get(TaskListener.class));
+            Run build = getContext().get(Run.class);
+            if(step.verbose){
+                build.addAction(new StashManager.StashVerboseAction());
+            }
+            StashManager.unstash(build, step.name, getContext().get(FilePath.class), getContext().get(Launcher.class), getContext().get(EnvVars.class), getContext().get(TaskListener.class));
             return null;
         }
 
